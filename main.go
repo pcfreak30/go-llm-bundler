@@ -222,14 +222,20 @@ func contains(slice []string, item string) bool {
 func main() {
 	config := Config{}
 
+	// Get the absolute path of the current directory
+	currentDir, err := filepath.Abs(".")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Get the base name of the project directory
-	defaultDir := "."
-	defaultProjectName := filepath.Base(defaultDir)
+	defaultProjectName := filepath.Base(currentDir)
 	// Sanitize the project name for use in a filename
 	defaultProjectName = regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(defaultProjectName, "_")
 	defaultOutputFile := fmt.Sprintf("%s_bundle.txt", defaultProjectName)
 
-	flag.StringVar(&config.ProjectDir, "dir", defaultDir, "The root directory of the Go project")
+	flag.StringVar(&config.ProjectDir, "dir", ".", "The root directory of the Go project")
 	flag.StringVar(&config.OutputFile, "out", defaultOutputFile, "The output file")
 	flag.BoolVar(&config.IncludeMeta, "meta", false, "Include metadata (package structure)")
 	flag.IntVar(&config.MinifyLevel, "minify", 1, "Minification level (1-3)")
@@ -238,10 +244,17 @@ func main() {
 	flag.Parse()
 
 	// Update the output filename if a custom project directory is specified
-	if config.ProjectDir != defaultDir && config.OutputFile == defaultOutputFile {
-		projectName := filepath.Base(config.ProjectDir)
+	if config.ProjectDir != "." {
+		absProjectDir, err := filepath.Abs(config.ProjectDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting absolute path: %v\n", err)
+			os.Exit(1)
+		}
+		projectName := filepath.Base(absProjectDir)
 		projectName = regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(projectName, "_")
-		config.OutputFile = fmt.Sprintf("%s_bundle.txt", projectName)
+		if config.OutputFile == defaultOutputFile {
+			config.OutputFile = fmt.Sprintf("%s_bundle.txt", projectName)
+		}
 	}
 
 	config.ExcludeDirs = strings.Split(*excludeDirs, ",")
